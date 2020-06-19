@@ -7,7 +7,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -15,38 +14,62 @@ import (
 )
 
 var (
-	AppName string = filepath.Base(os.Args[0])
-	Short   string = "sparrow 是一个基于 gin 的 restful api 风格的 web 框架"
-	Long    string = `sparrow 是一个简洁优雅的 go 语言 web 框架,用来快速开发 前后端分离 模式下的后端业务逻辑.
-sparrow的目标就是: 尽量平衡自由和规范的界限，既可以让开发者减少开发工作量和开发心智负担，同时开发者有自由组合的权利；当然这是个美好的愿望，希望能实现. 😁😁😁`
-	once sync.Once
+	// 保证  InitCmd 方法只执行一次
+	once       sync.Once
+	config     string
+	configFlag string
 )
 
-type sparrowCmdData struct {
-	config string // 业务配置
-}
-
-// rootCmd represents the base command when called without any subcommands
+// RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   AppName,
-	Short: Short,
-	Long:  Long,
+	Use:   filepath.Base(os.Args[0]),
+	Short: "sparrow 是一个基于 gin 的 restful api 风格的 web 框架",
+	Long: `sparrow 是一个简洁优雅的 go 语言 web 框架,用来快速开发 前后端分离 模式下的后端业务逻辑.
+sparrow的目标就是: 尽量平衡自由和规范的界限，既可以让开发者减少开发工作量和开发心智负担，同时开发者有自由组合的权利；当然这是个美好的愿望，希望能实现. 😁😁😁`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
 }
 
-func InitCmd(use, short, long string) {
+func init() {
+	// 设置 RootCmd 的Flags, 设置 Flags 一定要保证在 InitCmd() 执行前执行。
+	// 在 cobra 中同一个命令的同一个Flag不能被重复添加,这里使用 init 函数执行特性之一进行保证(如果某个包被导入了多次，也只会执行一次包的初始化)
+	func() {
+		RootCmd.PersistentFlags().StringVarP(&config, configFlag, "c", "./config.json", "config file (default is /.config.json)")
+	}()
+}
+
+// GetConfig 获取 命令行中指定的配置文件的路径
+func GetConfig() string {
+	return config
+}
+
+// InitCmd 初始化命令行
+func InitCmd(use, short, long string, run func(*cobra.Command, []string)) (err error) {
 	once.Do(func() {
-		//
-		RootCmd.Use = use
-		RootCmd.Short = short
-		RootCmd.Long = long
-		if err := RootCmd.Execute(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		// 初始化 RootCmd 配置
+		_initRootCmd(use, short, long, run)
+		if err = RootCmd.Execute(); err != nil {
+			return
 		}
 	})
+	return
+}
+
+// _initRootCmd 初始化 RootCmd 配置,
+func _initRootCmd(use, short, long string, run func(*cobra.Command, []string)) {
+	if use != "" {
+		RootCmd.Use = use
+	}
+	if short != "" {
+		RootCmd.Short = short
+	}
+	if long != "" {
+		RootCmd.Long = long
+	}
+	if run != nil {
+		RootCmd.Run = run
+	}
 }
 
 // AddCommand 添加子命令

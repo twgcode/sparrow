@@ -8,6 +8,8 @@ package framework
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
+	"github.com/twgcode/sparrow/util/cmd"
 	"sync"
 )
 
@@ -25,10 +27,19 @@ func NewApp() *App {
 	}
 }
 
-// InitApp 初始化 框架
-func (a *App) InitApp() (err error) {
+// RunApp 初始化 框架
+func (a *App) RunApp(use, short, long string, run func(*cobra.Command, []string)) (err error) {
 	a.initOnce.Do(func() {
-		// 这里写初始化逻辑
+		// 初始化命令参数
+		if err = cmd.InitCmd(use, short, long, run); err != nil {
+			return
+		}
+
 	})
 	return
+}
+
+// InitApp 写一些配置
+func (a *App) InitApp() {
+
 }
