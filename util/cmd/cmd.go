@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
 var (
 	// 保证  InitCmd 方法只执行一次
-	once       sync.Once
-	config     string
-	configFlag string
+	once   sync.Once
+	config string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -35,7 +35,7 @@ func init() {
 	// 设置 RootCmd 的Flags, 设置 Flags 一定要保证在 InitCmd() 执行前执行。
 	// 在 cobra 中同一个命令的同一个Flag不能被重复添加,这里使用 init 函数执行特性之一进行保证(如果某个包被导入了多次，也只会执行一次包的初始化)
 	func() {
-		RootCmd.PersistentFlags().StringVarP(&config, configFlag, "c", "./config.json", "config file (default is /.config.json)")
+		RootCmd.PersistentFlags().StringVarP(&config, "config", "c", "./config.json", "config file (default is /.config.json)")
 	}()
 }
 
@@ -44,20 +44,27 @@ func GetConfig() string {
 	return config
 }
 
+func TrimSpaceConfig() string {
+	config = strings.TrimSpace(config)
+	return config
+}
+
 // InitCmd 初始化命令行
-func InitCmd(use, short, long string, run func(*cobra.Command, []string)) (err error) {
+func InitCmd(use, short, long string, runE func(*cobra.Command, []string) error) (err error) {
 	once.Do(func() {
 		// 初始化 RootCmd 配置
-		_initRootCmd(use, short, long, run)
-		if err = RootCmd.Execute(); err != nil {
-			return
-		}
+		_initRootCmd(use, short, long, runE)
+		/*
+			if err = RootCmd.Execute(); err != nil {
+				return
+			}
+		*/
 	})
 	return
 }
 
 // _initRootCmd 初始化 RootCmd 配置,
-func _initRootCmd(use, short, long string, run func(*cobra.Command, []string)) {
+func _initRootCmd(use, short, long string, runE func(*cobra.Command, []string) error) {
 	if use != "" {
 		RootCmd.Use = use
 	}
@@ -67,8 +74,8 @@ func _initRootCmd(use, short, long string, run func(*cobra.Command, []string)) {
 	if long != "" {
 		RootCmd.Long = long
 	}
-	if run != nil {
-		RootCmd.Run = run
+	if runE != nil {
+		RootCmd.RunE = runE
 	}
 }
 
