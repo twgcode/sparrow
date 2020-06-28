@@ -10,4 +10,5 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
 	go.uber.org/zap v1.14.1
+	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f // indirect
 )

@@ -6,19 +6,7 @@
 
 package log
 
-import (
-	"os"
-	"strings"
-
-	"git.sixents.com/sixentsdevops/templategin/util/config"
-	"git.sixents.com/sixentsdevops/templategin/util/data"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
-	"github.com/natefinch/lumberjack"
-)
-
+/*
 var Logger *zap.Logger
 
 // InitDefaultLog 初始化默认日志配置
@@ -74,3 +62,4 @@ func NewLog(filename string, maxSize, maxBackup, maxAge int, level string, compr
 
 	return
 }
+*/
