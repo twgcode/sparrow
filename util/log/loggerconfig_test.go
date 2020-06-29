@@ -6,7 +6,9 @@
 
 package log
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSimpleFormat(t *testing.T) {
 	logger := &LoggerConfig{
@@ -15,9 +17,9 @@ func TestSimpleFormat(t *testing.T) {
 		SplitWriteFromLevel: false,
 		LowLevel:            "LowLevel",
 		HighLevel:           "HighLevel",
-		LowLevelFile:        nil,
+		LowLevelFile:        &LoggerFileConfig{},
 		HighLevelFile:       nil,
-		TimeEncoderText:     "TimeEncoderText",
+		TimeEncoderText:     "iso8601",
 		LevelEncoderText:    "LevelEncoderText",
 		DurationEncoderText: "DurationEncoderText",
 		CallerEncoderText:   "CallerEncoderText",

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Logger struct {
@@ -67,17 +68,78 @@ func (l *Logger) checkLoggerConfig() (err error) {
 
 // NewZapLogger 构建 zap Logger 实例
 func (l *Logger) NewZapLogger() (err error) {
+	var (
+		encoderConfig zapcore.EncoderConfig
+		encoder       zapcore.Encoder
+	)
+	// 获取  zapcore.EncoderConfig
+	if encoderConfig, err = l.logConfig.getEncoderConfig(); err != nil {
+		return
+	}
+	// 获取 zapcore.Encoder
+	if encoder, err = l.logConfig.getEncoder(encoderConfig); err != nil {
+		return
+	}
+	if l.logConfig.OutputConsole {
+	}
+	if l.logConfig.OutputFile {
 
+	}
+
+	if l.logConfig.SplitWriteFromLevel {
+
+	}
+
+	// TODO 待完成 zapcore.NewCore 和 zapcorere,.NewTee
 	return
 }
 
-// 结合日志切割工具设置日志输出接口
-func (l *Logger) getLogWriter(config *LoggerFileConfig) {
+// getFileLogWriter 结合日志切割工具设置日志输出接口
+func (l *Logger) getFileLogWriter(fileConfig *LoggerFileConfig) zapcore.WriteSyncer {
 	lumberJackLogger := &lumberjack.Logger{
-		Filename:   filename,
-		MaxSize:    maxSize,
-		MaxBackups: maxBackup,
-		MaxAge:     maxAge,
-		Compress:   compress,
+		Filename:   fileConfig.FileName,
+		MaxSize:    fileConfig.MaxSize,
+		MaxBackups: fileConfig.MaxBackups,
+		MaxAge:     fileConfig.MaxAge,
+		Compress:   fileConfig.Compress,
 	}
+	return zapcore.AddSync(lumberJackLogger)
 }
+
+// 2个文件+1个控制台输出
+
+/*
+func getLogger(infoPath,errorPath string)  (*zap.Logger,error) {
+	highPriority := zap.LevelEnablerFunc(func(lev zapcore.Level) bool{
+		return lev >= zap.ErrorLevel
+	})
+
+	lowPriority := zap.LevelEnablerFunc(func(lev zapcore.Level) bool {
+		return lev < zap.ErrorLevel && lev >= zap.DebugLevel
+	})
+
+
+	prodEncoder := zap.NewProductionEncoderConfig()
+	prodEncoder.EncodeTime = zapcore.ISO8601TimeEncoder
+
+
+	lowWriteSyncer,lowClose,err :=  zap.Open(infoPath)
+	if err != nil {
+		lowClose()
+		return nil,err
+	}
+
+
+	highWriteSyncer,highClose,err :=  zap.Open(errorPath)
+	if err != nil {
+		highClose()
+		return nil,err
+	}
+
+	highCore := zapcore.NewCore(zapcore.NewJSONEncoder(prodEncoder),highWriteSyncer,highPriority)
+	lowCore := zapcore.NewCore(zapcore.NewJSONEncoder(prodEncoder),lowWriteSyncer,lowPriority)
+
+
+	return  zap.New(zapcorere,.NewTee(highColowCore),zap.AddCaller()),nil
+
+*/
