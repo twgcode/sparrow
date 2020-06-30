@@ -11,6 +11,7 @@ import (
 	"github.com/twgcode/sparrow/util/sliceutil"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 // 先看下 zap.AddStacktrace，研究完毕
@@ -90,6 +91,7 @@ type LoggerConfig struct {
 	OutputConsole       bool // 是否输出到控制台
 	OutputFile          bool // 是否输出到日志文件
 	SplitWriteFromLevel bool // 是否根据不同的日志级别写不同的日志
+	Stacktrace          bool // 是否 记录高级别日志时记录对应的堆栈信息
 
 	LowLevel                    string // 低级别日志等级, 不同级别的日志 写入的不同日志文件,
 	HighLevel                   string // 同时高级别的日志也会记录 堆栈信息
@@ -108,14 +110,66 @@ type LoggerConfig struct {
 
 	EncoderText       string // 日志编码器, 用来决定日志记录的整体形式; 有 json 和 console 2 种
 	EncoderConfigText string // 日志配置编码器, An EncoderConfig allows users to configure the concrete encoders supplied by zapcore.
+	checkMutex        sync.Mutex
+}
+
+// checkLoggerConfig 检查 要生成新的 日志记录器的配置
+func (l *LoggerConfig) CheckLoggerConfig() (err error) {
+	defer l.checkMutex.Unlock()
+	l.checkMutex.Lock()
+	// 检查 LowLevelFile
+	if l.LowLevelFile == nil {
+		err = fmt.Errorf("LowLevelFile cannot be nil")
+		return
+	}
+	if err = l.LowLevelFile.checkFileName(); err != nil {
+		return
+	}
+	// 检查 HighLevelFile 是否需要设置 LowLevelFile; FileName 不会一样
+	if l.HighLevelFile == nil && l.SplitWriteFromLevel {
+		l.createHighLevelToLowLevel()
+	}
+	// 部分字符串类型的字段进行去除空格+转小写的操作
+	l.simpleFormat()
+
+	// 检查 编码器 重要配置
+	if err = l.checkEncoderConfigText(); err != nil {
+		return
+	}
+	if err = l.checkEncoderText(); err != nil {
+		return
+	}
+	// 检查 配置编码器是时需要的各种keys
+	err = l.checkKeys()
+	return
 }
 
 // simpleFormat 部分字符串类型的字段进行去除空格+转小写的操作,为了让 项目/业务代码更快 run 起来 没使用反射，如果后期压测影响不太这快可用反射减少代码量
 func (l *LoggerConfig) simpleFormat() {
-	changeField := []string{l.LowLevel, l.HighLevel, l.TimeEncoderText, l.LevelEncoderText, l.DurationEncoderText, l.CallerEncoderText, l.TimeKey, l.LevelKey, l.CallerKey, l.MessageKey, l.EncoderText, l.EncoderConfigText}
+	changeField := []*string{&l.LowLevel, &l.HighLevel, &l.TimeEncoderText, &l.LevelEncoderText, &l.DurationEncoderText, &l.CallerEncoderText, &l.EncoderText, &l.EncoderConfigText}
 	for i := range changeField {
-		changeField[i] = strings.ToLower(strings.TrimSpace(changeField[i]))
+		*changeField[i] = strings.ToLower(strings.TrimSpace(*changeField[i]))
 	}
+	fmt.Println(changeField)
+	// 只进行去除字符串
+	changeField = []*string{&l.TimeKey, &l.LevelKey, &l.CallerKey, &l.MessageKey, &l.StacktraceKey}
+	for i := range changeField {
+		*changeField[i] = strings.TrimSpace(*changeField[i])
+	}
+}
+
+// checkKeys 检查配置 zapcore.EncoderConfig时的 各种key,注意要在执行checkEncoderConfigText后在执行改方法
+func (l *LoggerConfig) checkKeys() (err error) {
+	if l.EncoderConfigText == EncoderConfigTextProdCustom || l.EncoderConfigText == EncoderConfigTextDevCustom {
+
+		for _, v := range []string{l.TimeKey, l.LevelKey, l.CallerKey, l.MessageKey, l.StacktraceKey} {
+			if len(v) == 0 {
+				err = fmt.Errorf("an illegal value to configure zapcore.EncoderConfig Key key cannot be empty, value is %s", v)
+				return
+			}
+		}
+	}
+	return
 }
 
 // createHighLevelToLowLevel 根据 LowLevelFile 创建 HighLevelFile
@@ -130,7 +184,7 @@ func (l *LoggerConfig) createHighLevelToLowLevel() {
 	l.HighLevelFile = &_tmp
 }
 
-// checkEncoderConfigText 检查和格式化 EncoderConfigText
+// checkEncoderConfigText 检查 EncoderConfigText
 func (l *LoggerConfig) checkEncoderConfigText() (err error) {
 	// 不存在
 	if !sliceutil.ContainsElement(encoderConfigTextList, l.EncoderConfigText) {

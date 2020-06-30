@@ -12,6 +12,8 @@ import (
 	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"os"
+	"sync"
 )
 
 var (
@@ -63,11 +65,12 @@ func NewEncoderConfigTextDevCustom(l *Logger) (encoderConfig zapcore.EncoderConf
 }
 
 type Logger struct {
-	logConfig *LoggerConfig // 配置
-	Logger    *zap.Logger   // 记录器实例
+	logConfig         *LoggerConfig // 配置
+	Logger            *zap.Logger   // 记录器实例
+	newZapLoggerMutex sync.Mutex    // 构建 *zap.Logger时使用(NewZapLogger函数调用)
 }
 
-// NewLogger
+// NewLogger 构建有一个 日志实例
 func NewLogger(loggerConfig *LoggerConfig) (log *Logger, err error) {
 
 	log = &Logger{
@@ -77,7 +80,7 @@ func NewLogger(loggerConfig *LoggerConfig) (log *Logger, err error) {
 	if err = log.checkLoggerConfig(); err != nil {
 		return
 	}
-	err = log.NewZapLogger()
+	err = log.newZapLogger()
 	return
 }
 
@@ -87,38 +90,19 @@ func (l *Logger) checkLoggerConfig() (err error) {
 		err = fmt.Errorf("LoggerConfig cannot be nil")
 		return
 	}
-	// 检查 LowLevelFile
-	if l.logConfig.LowLevelFile == nil {
-		err = fmt.Errorf("LowLevelFile cannot be nil")
-		return
-	}
-	if err = l.logConfig.LowLevelFile.checkFileName(); err != nil {
-		return
-	}
-	// 检查 HighLevelFile 是否需要设置 LowLevelFile; FileName 不会一样
-	if l.logConfig.HighLevelFile == nil {
-		l.logConfig.createHighLevelToLowLevel()
-	}
-
-	// 部分字符串类型的字段进行去除空格+转小写的操作
-	l.logConfig.simpleFormat()
-
-	// 检查 编码器 重要配置
-	if err = l.logConfig.checkEncoderConfigText(); err != nil {
-		return
-	}
-	if err = l.logConfig.checkEncoderText(); err != nil {
-		return
-	}
-
+	// 检查 logConfig 字段
+	err = l.logConfig.CheckLoggerConfig()
 	return
 }
 
-// NewZapLogger 构建 zap Logger 实例
-func (l *Logger) NewZapLogger() (err error) {
+// newZapLogger 构建 zap Logger 实例
+func (l *Logger) newZapLogger() (err error) {
+	defer l.newZapLoggerMutex.Unlock()
+	l.newZapLoggerMutex.Lock()
 	var (
 		encoderConfig zapcore.EncoderConfig
 		encoder       zapcore.Encoder
+		cores         []zapcore.Core
 	)
 	// 获取  zapcore.EncoderConfig
 	if encoderConfig, err = l.GetEncoderConfig(); err != nil {
@@ -128,17 +112,52 @@ func (l *Logger) NewZapLogger() (err error) {
 	if encoder, err = l.GetEncoder(encoderConfig); err != nil {
 		return
 	}
+	// 构建 zapcore.Core
+	if cores, err = l.newZapCore(encoder); err != nil {
+		return
+	}
+	// 判断是否开启高级别日志堆栈信息记录
+	if l.logConfig.SplitWriteFromLevel && l.logConfig.Stacktrace {
+		level := new(zapcore.Level)
+		_ = level.UnmarshalText([]byte(l.logConfig.HighLevel))
+		l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddStacktrace(level))
+		return
+	}
+	l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller())
+	return
+}
+
+// newZapCore 生成 zapcore.Core(是一个最小的，快速的记录器接口) , NewCore creates a Core that writes logs to a WriteSyncer
+func (l *Logger) newZapCore(encoder zapcore.Encoder) (cores []zapcore.Core, err error) {
+	cores = make([]zapcore.Core, 3) // 最多就3个
+	// 输出到控制台
 	if l.logConfig.OutputConsole {
+		// 获取要记录的日志等级
+		level := new(zapcore.Level)
+		if err = level.UnmarshalText([]byte(l.logConfig.LowLevel)); err != nil {
+			return
+		}
+		writeSyncEr := zapcore.AddSync(os.Stdout)
+		cores = append(cores, zapcore.NewCore(encoder, writeSyncEr, level))
 	}
+	// 输出到文件
 	if l.logConfig.OutputFile {
-
+		level := new(zapcore.Level)
+		if err = level.UnmarshalText([]byte(l.logConfig.LowLevel)); err != nil {
+			return
+		}
+		writeSyncEr := l.GetFileLogWriter(l.logConfig.LowLevelFile)
+		cores = append(cores, zapcore.NewCore(encoder, writeSyncEr, level))
+		// 高级别日志 单独输出
+		if l.logConfig.SplitWriteFromLevel {
+			level := new(zapcore.Level)
+			if err = level.UnmarshalText([]byte(l.logConfig.LowLevel)); err != nil {
+				return
+			}
+			writeSyncEr := l.GetFileLogWriter(l.logConfig.HighLevelFile)
+			cores = append(cores, zapcore.NewCore(encoder, writeSyncEr, level))
+		}
 	}
-
-	if l.logConfig.SplitWriteFromLevel {
-
-	}
-
-	// TODO 待完成 zapcore.NewCore 和 zapcorere,.NewTee
 	return
 }
 
@@ -164,32 +183,32 @@ func (l *Logger) GetEncoderConfig() (encoderConfig zapcore.EncoderConfig, err er
 	return
 }
 
-// customEncoderConfig 配置自动定义 EncoderConfig
+// CustomEncoderConfig 配置自动定义 配置编码器 zapcore.EncoderConfig
 func (l *Logger) CustomEncoderConfig(encoderConfig *zapcore.EncoderConfig) (err error) {
 	// 配置各种 编码器
-	var EncodeTime zapcore.TimeEncoder
+	var EncodeTime = new(zapcore.TimeEncoder)
 	if err = EncodeTime.UnmarshalText([]byte(l.logConfig.TimeEncoderText)); err != nil {
 		return
 	}
-	encoderConfig.EncodeTime = EncodeTime
+	encoderConfig.EncodeTime = *EncodeTime
 
-	var EncodeLevel zapcore.LevelEncoder
+	var EncodeLevel = new(zapcore.LevelEncoder)
 	if err = EncodeLevel.UnmarshalText([]byte(l.logConfig.LevelEncoderText)); err != nil {
 		return
 	}
-	encoderConfig.EncodeLevel = EncodeLevel
+	encoderConfig.EncodeLevel = *EncodeLevel
 
-	var EncodeDuration zapcore.DurationEncoder
+	var EncodeDuration = new(zapcore.DurationEncoder)
 	if err = EncodeDuration.UnmarshalText([]byte(l.logConfig.DurationEncoderText)); err != nil {
 		return
 	}
-	encoderConfig.EncodeDuration = EncodeDuration
+	encoderConfig.EncodeDuration = *EncodeDuration
 
-	var EncodeCaller zapcore.CallerEncoder
+	var EncodeCaller = new(zapcore.CallerEncoder)
 	if err = EncodeCaller.UnmarshalText([]byte(l.logConfig.CallerEncoderText)); err != nil {
 		return
 	}
-	encoderConfig.EncodeCaller = EncodeCaller
+	encoderConfig.EncodeCaller = *EncodeCaller
 
 	// 配置各种 key
 	encoderConfig.TimeKey = l.logConfig.TimeKey
@@ -245,6 +264,8 @@ func getLogger(infoPath,errorPath string)  (*zap.Logger,error) {
 	lowCore := zapcore.NewCore(zapcore.NewJSONEncoder(prodEncoder),lowWriteSyncer,lowPriority)
 
 
-	return  zap.New(zapcorere,.NewTee(highColowCore),zap.AddCaller()),nil
+	return  zap.New(zapcore.NewTee(highCore,lowCore),zap.AddCaller()),nil
+
+
 
 */
