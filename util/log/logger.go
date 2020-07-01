@@ -31,39 +31,6 @@ var (
 	}
 )
 
-// NewEncoderConfigTextProdDefault   生产环境默认的 EncoderConfig 配置
-func NewEncoderConfigTextProdDefault(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
-	encoderConfig = zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.TimeKey = "time"
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	encoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
-	encoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-	return
-}
-
-func NewEncoderConfigTextProdCustom(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
-	encoderConfig = zap.NewProductionEncoderConfig()
-	err = l.CustomEncoderConfig(&encoderConfig)
-	return
-}
-
-// NewEncoderConfigTextDevDefault   生产环境默认的 EncoderConfig 配置
-func NewEncoderConfigTextDevDefault(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
-	encoderConfig = zap.NewDevelopmentEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	encoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
-	encoderConfig.EncodeCaller = zapcore.FullCallerEncoder
-	return
-}
-
-func NewEncoderConfigTextDevCustom(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
-	encoderConfig = zap.NewDevelopmentEncoderConfig()
-	err = l.CustomEncoderConfig(&encoderConfig)
-	return
-}
-
 type Logger struct {
 	logConfig         *LoggerConfig // 配置
 	Logger            *zap.Logger   // 记录器实例
@@ -227,6 +194,39 @@ func (l *Logger) GetEncoder(encoderConfig zapcore.EncoderConfig) (encoder zapcor
 		err = optionalValuesErr(l.logConfig.EncoderText, "EncoderText")
 	}
 	encoder = funcNewEncoder(encoderConfig)
+	return
+}
+
+// NewEncoderConfigTextProdDefault   生产环境默认的 EncoderConfig 配置
+func NewEncoderConfigTextProdDefault(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
+	encoderConfig = zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.TimeKey = "time"
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
+	encoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+	return
+}
+
+func NewEncoderConfigTextProdCustom(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
+	encoderConfig = zap.NewProductionEncoderConfig()
+	err = l.CustomEncoderConfig(&encoderConfig)
+	return
+}
+
+// NewEncoderConfigTextDevDefault   生产环境默认的 EncoderConfig 配置
+func NewEncoderConfigTextDevDefault(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
+	encoderConfig = zap.NewDevelopmentEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeDuration = zapcore.SecondsDurationEncoder
+	encoderConfig.EncodeCaller = zapcore.FullCallerEncoder
+	return
+}
+
+func NewEncoderConfigTextDevCustom(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
+	encoderConfig = zap.NewDevelopmentEncoderConfig()
+	err = l.CustomEncoderConfig(&encoderConfig)
 	return
 }
 
