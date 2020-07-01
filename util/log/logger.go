@@ -84,9 +84,11 @@ func (l *Logger) newZapLogger() (err error) {
 		return
 	}
 	// 判断是否开启高级别日志堆栈信息记录
-	if l.logConfig.SplitWriteFromLevel && l.logConfig.Stacktrace {
+	if l.logConfig.Stacktrace {
 		level := new(zapcore.Level)
-		_ = level.UnmarshalText([]byte(l.logConfig.HighLevel))
+		if err = level.UnmarshalText([]byte(l.logConfig.HighLevel)); err != nil {
+			return
+		}
 		l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddStacktrace(level))
 		return
 	}
@@ -96,7 +98,7 @@ func (l *Logger) newZapLogger() (err error) {
 
 // newZapCore 生成 zapcore.Core(是一个最小的，快速的记录器接口) , NewCore creates a Core that writes logs to a WriteSyncer
 func (l *Logger) newZapCore(encoder zapcore.Encoder) (cores []zapcore.Core, err error) {
-	cores = make([]zapcore.Core, 3) // 最多就3个
+	cores = make([]zapcore.Core, 0, 3) // 最多就3个
 	// 输出到控制台
 	if l.logConfig.OutputConsole {
 		// 获取要记录的日志等级
@@ -118,7 +120,7 @@ func (l *Logger) newZapCore(encoder zapcore.Encoder) (cores []zapcore.Core, err 
 		// 高级别日志 单独输出
 		if l.logConfig.SplitWriteFromLevel {
 			level := new(zapcore.Level)
-			if err = level.UnmarshalText([]byte(l.logConfig.LowLevel)); err != nil {
+			if err = level.UnmarshalText([]byte(l.logConfig.HighLevel)); err != nil {
 				return
 			}
 			writeSyncEr := l.GetFileLogWriter(l.logConfig.HighLevelFile)
@@ -229,43 +231,3 @@ func NewEncoderConfigTextDevCustom(l *Logger) (encoderConfig zapcore.EncoderConf
 	err = l.CustomEncoderConfig(&encoderConfig)
 	return
 }
-
-// 2个文件+1个控制台输出
-
-/*
-func getLogger(infoPath,errorPath string)  (*zap.Logger,error) {
-	highPriority := zap.LevelEnablerFunc(func(lev zapcore.Level) bool{
-		return lev >= zap.ErrorLevel
-	})
-
-	lowPriority := zap.LevelEnablerFunc(func(lev zapcore.Level) bool {
-		return lev < zap.ErrorLevel && lev >= zap.DebugLevel
-	})
-
-
-	prodEncoder := zap.NewProductionEncoderConfig()
-	prodEncoder.EncodeTime = zapcore.ISO8601TimeEncoder
-
-
-	lowWriteSyncer,lowClose,err :=  zap.Open(infoPath)
-	if err != nil {
-		lowClose()
-		return nil,err
-	}
-
-
-	highWriteSyncer,highClose,err :=  zap.Open(errorPath)
-	if err != nil {
-		highClose()
-		return nil,err
-	}
-
-	highCore := zapcore.NewCore(zapcore.NewJSONEncoder(prodEncoder),highWriteSyncer,highPriority)
-	lowCore := zapcore.NewCore(zapcore.NewJSONEncoder(prodEncoder),lowWriteSyncer,lowPriority)
-
-
-	return  zap.New(zapcore.NewTee(highCore,lowCore),zap.AddCaller()),nil
-
-
-
-*/

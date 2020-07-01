@@ -88,28 +88,29 @@ func optionalValuesErr(value, class string) (err error) {
 
 // LoggerConfig  提供生成一个 zap.Logger + lumberjack 的配置
 type LoggerConfig struct {
-	OutputConsole       bool // 是否输出到控制台
-	OutputFile          bool // 是否输出到日志文件
-	SplitWriteFromLevel bool // 是否根据不同的日志级别写不同的日志
-	Stacktrace          bool // 是否 记录高级别日志时记录对应的堆栈信息
+	OutputConsole       bool `mapstructure:"output_console"`         // 是否输出到控制台
+	OutputFile          bool `mapstructure:"output_file"`            // 是否输出到日志文件
+	SplitWriteFromLevel bool `mapstructure:"split_write_from_level"` // 是否根据不同的日志级别写不同的日志
+	Stacktrace          bool `mapstructure:"stacktrace"`             // 是否 记录高级别日志时记录对应的堆栈信息
 
-	LowLevel                    string // 低级别日志等级, 不同级别的日志 写入的不同日志文件,
-	HighLevel                   string // 同时高级别的日志也会记录 堆栈信息
-	LowLevelFile, HighLevelFile *LoggerFileConfig
+	LowLevel      string            `mapstructure:"low_level"`  // 低级别日志等级, 不同级别的日志 写入的不同日志文件,
+	HighLevel     string            `mapstructure:"high_level"` // 同时高级别的日志也会记录 堆栈信息
+	LowLevelFile  *LoggerFileConfig `mapstructure:"low_level_file"`
+	HighLevelFile *LoggerFileConfig `mapstructure:"high_level_file"`
 
-	TimeEncoderText     string // 时间格式编码器, 输出时间的格式
-	LevelEncoderText    string // 日志等级编码器; A LevelEncoder serializes a Level to a primitive type.
-	DurationEncoderText string // 持续时间编码器; A DurationEncoder serializes a time.Duration to a primitive type.
-	CallerEncoderText   string // 调用文本编码器; 输出文件信息时，是以/full/path/to/package/file:line 全路径还是 package/file:line 的短路径
+	TimeEncoderText     string `mapstructure:"time_encoder_text"`     // 时间格式编码器, 输出时间的格式
+	LevelEncoderText    string `mapstructure:"level_encoder_text"`    // 日志等级编码器; A LevelEncoder serializes a Level to a primitive type.
+	DurationEncoderText string `mapstructure:"duration_encoder_text"` // 持续时间编码器; A DurationEncoder serializes a time.Duration to a primitive type.
+	CallerEncoderText   string `mapstructure:"caller_encoder_text"`   // 调用文本编码器; 输出文件信息时，是以/full/path/to/package/file:line 全路径还是 package/file:line 的短路径
 
-	TimeKey       string // 输出日志时时间的key
-	LevelKey      string // 日志级别的key
-	CallerKey     string // 调用文本的key; file:line
-	MessageKey    string // 日志内容的key
-	StacktraceKey string // 堆栈信息的key
+	TimeKey       string `mapstructure:"time_key"`       // 输出日志时时间的key
+	LevelKey      string `mapstructure:"level_key"`      // 日志级别的key
+	CallerKey     string `mapstructure:"callel_key"`     // 调用文本的key; file:line
+	MessageKey    string `mapstructure:"message_key"`    // 日志内容的key
+	StacktraceKey string `mapstructure:"stacktrace_key"` // 堆栈信息的key
 
-	EncoderText       string // 日志编码器, 用来决定日志记录的整体形式; 有 json 和 console 2 种
-	EncoderConfigText string // 日志配置编码器, An EncoderConfig allows users to configure the concrete encoders supplied by zapcore.
+	EncoderText       string `mapstructure:"encoder_text"`        // 日志编码器, 用来决定日志记录的整体形式; 有 json 和 console 2 种
+	EncoderConfigText string `mapstructure:"encoder_config_text"` // 日志配置编码器, An EncoderConfig allows users to configure the concrete encoders supplied by zapcore.
 	checkMutex        sync.Mutex
 }
 
@@ -118,17 +119,24 @@ func (l *LoggerConfig) CheckLoggerConfig() (err error) {
 	defer l.checkMutex.Unlock()
 	l.checkMutex.Lock()
 	// 检查 LowLevelFile
-	if l.LowLevelFile == nil {
-		err = fmt.Errorf("LowLevelFile cannot be nil")
+	if !l.OutputFile && !l.OutputConsole {
+		err = fmt.Errorf("please set the correct output source, set one of LoggerConfig.OutputConsole or LoggerConfig.OutputFile")
 		return
 	}
-	if err = l.LowLevelFile.checkFileName(); err != nil {
-		return
+	if l.OutputFile {
+		if l.LowLevelFile == nil {
+			err = fmt.Errorf("LowLevelFile cannot be nil")
+			return
+		}
+		if err = l.LowLevelFile.checkFileName(); err != nil {
+			return
+		}
+		// 检查 HighLevelFile 是否需要设置 LowLevelFile; FileName 不会一样
+		if l.HighLevelFile == nil && l.SplitWriteFromLevel {
+			l.createHighLevelToLowLevel()
+		}
 	}
-	// 检查 HighLevelFile 是否需要设置 LowLevelFile; FileName 不会一样
-	if l.HighLevelFile == nil && l.SplitWriteFromLevel {
-		l.createHighLevelToLowLevel()
-	}
+
 	// 部分字符串类型的字段进行去除空格+转小写的操作
 	l.simpleFormat()
 
@@ -146,16 +154,19 @@ func (l *LoggerConfig) CheckLoggerConfig() (err error) {
 
 // simpleFormat 部分字符串类型的字段进行去除空格+转小写的操作,为了让 项目/业务代码更快 run 起来 没使用反射，如果后期压测影响不太这快可用反射减少代码量
 func (l *LoggerConfig) simpleFormat() {
-	changeField := []*string{&l.LowLevel, &l.HighLevel, &l.TimeEncoderText, &l.LevelEncoderText, &l.DurationEncoderText, &l.CallerEncoderText, &l.EncoderText, &l.EncoderConfigText}
-	for i := range changeField {
-		*changeField[i] = strings.ToLower(strings.TrimSpace(*changeField[i]))
+	if l.EncoderConfigText == EncoderConfigTextProdCustom || l.EncoderConfigText == EncoderConfigTextDevCustom {
+		changeField := []*string{&l.LowLevel, &l.HighLevel, &l.TimeEncoderText, &l.LevelEncoderText, &l.DurationEncoderText, &l.CallerEncoderText, &l.EncoderText, &l.EncoderConfigText}
+		for i := range changeField {
+			*changeField[i] = strings.ToLower(strings.TrimSpace(*changeField[i]))
+		}
+		fmt.Println(changeField)
+		// 只进行去除字符串
+		changeField = []*string{&l.TimeKey, &l.LevelKey, &l.CallerKey, &l.MessageKey, &l.StacktraceKey}
+		for i := range changeField {
+			*changeField[i] = strings.TrimSpace(*changeField[i])
+		}
 	}
-	fmt.Println(changeField)
-	// 只进行去除字符串
-	changeField = []*string{&l.TimeKey, &l.LevelKey, &l.CallerKey, &l.MessageKey, &l.StacktraceKey}
-	for i := range changeField {
-		*changeField[i] = strings.TrimSpace(*changeField[i])
-	}
+
 }
 
 // checkKeys 检查配置 zapcore.EncoderConfig时的 各种key,注意要在执行checkEncoderConfigText后在执行改方法
@@ -205,9 +216,11 @@ func (l *LoggerConfig) checkEncoderText() (err error) {
 
 // LoggerFile 日志文件
 type LoggerFileConfig struct {
-	FileName                    string
-	MaxSize, MaxBackups, MaxAge int
-	Compress                    bool // 是否开启日志压缩，默认为否
+	FileName   string `mapstructure:"file_name"`
+	MaxSize    int    `mapstructure:"max_size"`
+	MaxBackups int    `mapstructure:"max_backups"`
+	MaxAge     int    `mapstructure:"max_age"`
+	Compress   bool   `mapstructure:"compress"` // 是否开启日志压缩，默认为否
 }
 
 func (l LoggerFileConfig) checkFileName() (err error) {
