@@ -89,10 +89,10 @@ func (l *Logger) newZapLogger() (err error) {
 		if err = level.UnmarshalText([]byte(l.logConfig.HighLevel)); err != nil {
 			return
 		}
-		l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddStacktrace(level))
+		l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddStacktrace(level), zap.AddCallerSkip(l.logConfig.CallerSkip))
 		return
 	}
-	l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller())
+	l.Logger = zap.New(zapcore.NewTee(cores...), zap.AddCaller(), zap.AddCallerSkip(l.logConfig.CallerSkip))
 	return
 }
 
@@ -216,7 +216,7 @@ func NewEncoderConfigTextProdCustom(l *Logger) (encoderConfig zapcore.EncoderCon
 	return
 }
 
-// NewEncoderConfigTextDevDefault   生产环境默认的 EncoderConfig 配置
+// NewEncoderConfigTextDevDefault   开发环境默认的 EncoderConfig 配置
 func NewEncoderConfigTextDevDefault(l *Logger) (encoderConfig zapcore.EncoderConfig, err error) {
 	encoderConfig = zap.NewDevelopmentEncoderConfig()
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder

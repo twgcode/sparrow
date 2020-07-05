@@ -109,6 +109,8 @@ type LoggerConfig struct {
 	MessageKey    string `mapstructure:"message_key"`    // 日志内容的key
 	StacktraceKey string `mapstructure:"stacktrace_key"` // 堆栈信息的key
 
+	CallerSkip int `mapstructure:"caller_skip"` // 跳过几层调用者,在对zap输出的方法进行封装时会使用该参数
+
 	EncoderText       string `mapstructure:"encoder_text"`        // 日志编码器, 用来决定日志记录的整体形式; 有 json 和 console 2 种
 	EncoderConfigText string `mapstructure:"encoder_config_text"` // 日志配置编码器, An EncoderConfig allows users to configure the concrete encoders supplied by zapcore.
 	checkMutex        sync.Mutex
