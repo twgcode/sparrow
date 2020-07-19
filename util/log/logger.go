@@ -37,7 +37,7 @@ type Logger struct {
 	newZapLoggerMutex sync.Mutex    // 构建 *zap.Logger时使用(NewZapLogger函数调用)
 }
 
-// NewLogger 构建有一个 日志实例
+// NewLogger 构建一个 日志实例
 func NewLogger(loggerConfig *LoggerConfig) (log *Logger, err error) {
 
 	log = &Logger{

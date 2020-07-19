@@ -14,53 +14,9 @@ import (
 	"sync"
 )
 
-// 先看下 zap.AddStacktrace，研究完毕
-//
-
-/*
-	TODO 研究下 zap.AddStacktrace
-	已经研究明白
-	logger, _ := zap.NewProduction(zap.AddStacktrace(zapcore.WarnLevel))
-*/
-
-/*
-func NewDevelopmentEncoderConfig() zapcore.EncoderConfig {
-	return zapcore.EncoderConfig{
-		// Keys can be anything except the empty string.
-		TimeKey:        "T",
-		LevelKey:       "L",
-		NameKey:        "N",
-		CallerKey:      "C",
-		MessageKey:     "M",
-		StacktraceKey:  "S",
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.CapitalLevelEncoder,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,
-		EncodeDuration: zapcore.StringDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
-}
-]
-func NewProductionEncoderConfig() zapcore.EncoderConfig {
-	return zapcore.EncoderConfig{
-		TimeKey:        "ts",
-		LevelKey:       "level",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		MessageKey:     "msg",
-		StacktraceKey:  "stacktrace",
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeTime:     zapcore.EpochTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
-}
-*/
-
 const (
 	// 默认的日志名
-	DefaultHighLevelFileName = "error.log"
+	DefaultHighLevelFileName = "error"
 	DefaultLowLevelFileName  = "info.log"
 )
 const (
@@ -161,7 +117,6 @@ func (l *LoggerConfig) simpleFormat() {
 		for i := range changeField {
 			*changeField[i] = strings.ToLower(strings.TrimSpace(*changeField[i]))
 		}
-		fmt.Println(changeField)
 		// 只进行去除字符串
 		changeField = []*string{&l.TimeKey, &l.LevelKey, &l.CallerKey, &l.MessageKey, &l.StacktraceKey}
 		for i := range changeField {
@@ -191,9 +146,16 @@ func (l *LoggerConfig) createHighLevelToLowLevel() {
 		return
 	}
 	_tmp := *l.LowLevelFile
-	dir, _ := filepath.Split(_tmp.FileName)
+	dir, fileName := filepath.Split(_tmp.FileName)
+
+	fileNameList := strings.Split(fileName, ".")
 	// 设置个默认的错误日志名
-	_tmp.FileName = filepath.Join(dir, DefaultHighLevelFileName)
+	if len(fileNameList) == 1 {
+		_tmp.FileName = filepath.Join(dir, fileName+"-"+DefaultHighLevelFileName)
+	} else {
+		name := fmt.Sprintf("%s-%s.%s", strings.Join(fileNameList[0:len(fileNameList)-1], "."), DefaultHighLevelFileName, fileNameList[len(fileNameList)-1])
+		_tmp.FileName = filepath.Join(dir, name)
+	}
 	l.HighLevelFile = &_tmp
 }
 
