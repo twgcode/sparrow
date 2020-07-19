@@ -30,7 +30,6 @@ type App struct {
 // NewApp 构造
 func NewApp() (app *App) {
 	app = &App{
-		Engine:   gin.New(),
 		initOnce: sync.Once{},
 	}
 	return
@@ -67,6 +66,7 @@ func (a *App) runPre() (err error) {
 }
 
 func (a *App) runAppE(cmd *cobra.Command, args []string) (err error) {
+	a.Engine = gin.New() // 构造一个引擎
 	if err = a.runPre(); err != nil {
 		return
 	}
