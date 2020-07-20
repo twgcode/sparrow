@@ -11,11 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var DefaultCfgType = FileType
 var Sparrow = NewApp()
 
 // ConfigApp 配置框架需要的一些参数
-func ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event)) (err error) {
-	err = Sparrow.ConfigApp(use, short, long, callerRun, configOnConfigChange)
+func ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event), cfg cfgType) (err error) {
+	err = Sparrow.ConfigApp(use, short, long, callerRun, configOnConfigChange, cfg)
 	return
 }
 

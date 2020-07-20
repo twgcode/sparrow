@@ -8,17 +8,26 @@ package framework
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/twgcode/sparrow/util/cmd"
 	"github.com/twgcode/sparrow/util/conf"
-	"sync"
+)
+
+type cfgType int8
+
+const (
+	FileType cfgType = 0
+	CodeType cfgType = 1
 )
 
 // App sparrow结构体
 type App struct {
 	Engine                   *gin.Engine
+	cfgType                  cfgType                              // 框架读取框架配置的方式, file: code
 	initOnce                 sync.Once                            // 防止并发的初始化
 	callerRun                func(*cobra.Command, []string) error // 业务调用方在web服务启动前要执行的代码
 	EtcConf                  *conf.ViperConf                      //  框架配置
@@ -29,18 +38,16 @@ type App struct {
 
 // NewApp 构造
 func NewApp() (app *App) {
-	app = &App{
-		initOnce: sync.Once{},
-	}
+	app = &App{}
 	return
 }
 
 // ConfigApp 配置框架需要的一些参数
-func (a *App) ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event)) (err error) {
+func (a *App) ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event), cfg cfgType) (err error) {
+
 	a.initOnce.Do(func() {
-		defer a.configOnConfigChangeLock.Unlock()
+		a.cfgType = cfg
 		a.callerRun = callerRun // 调用在web启动前要执行的代码
-		a.configOnConfigChangeLock.Lock()
 		a.configOnConfigChange = configOnConfigChange
 		if err = cmd.InitCmd(use, short, long, a.runAppE); err != nil {
 			return
@@ -121,8 +128,10 @@ func (a *App) OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
 
 // checkCmd 检查cmd参数格式是否正确
 func (a *App) checkCmd() (err error) {
-	if len(cmd.TrimSpaceEtc()) == 0 {
-		err = fmt.Errorf("sparrow framework configuration file path cannot be empty, please use -e / --etc to specify the correct path")
+	if a.cfgType == FileType {
+		if len(cmd.TrimSpaceEtc()) == 0 {
+			err = fmt.Errorf("sparrow framework configuration file path cannot be empty, please use -e / --etc to specify the correct path")
+		}
 	}
 	return
 }

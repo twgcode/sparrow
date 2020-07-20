@@ -7,11 +7,12 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -46,7 +47,6 @@ func init() {
 
 		RootCmd.PersistentFlags().StringVar(&etcEnvPrefix, "etc_env_prefix", "sparrow", "defines a prefix that ENVIRONMENT variables will use from etc")
 		RootCmd.PersistentFlags().StringVar(&configEnvPrefix, "config_env_prefix", "config", "defines a prefix that ENVIRONMENT variables will use from config")
-
 	}()
 }
 
