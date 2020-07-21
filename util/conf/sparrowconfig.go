@@ -6,14 +6,18 @@
 
 package conf
 
-// SparrowConfig 框架自带配置结构体
-type SparrowConfig struct {
-	Gin ginConf // gin 框架需要的配置
+import "github.com/twgcode/sparrow/util/log"
+
+type SparrowConf struct {
+	Gin    *GinConf          `mapstructure:"gin" json:"gin"`
+	Access *log.LoggerConfig `mapstructure:"access" json:"access"`
+	Log    *log.LoggerConfig `mapstructure:"log" json:"log"`
 }
 
-type ginConf struct {
-	Addr     string
-	Mode     string
-	NoRoute  bool
-	NoMethod bool
+// 启动 gin 框架需要有关配置
+type GinConf struct {
+	Addr     string `mapstructure:"addr" json:"addr"`
+	Mode     string `mapstructure:"mode" json:"mode"`
+	NoRoute  bool   `mapstructure:"no_route" json:"no_route"`
+	NoMethod bool   `mapstructure:"no_method" json:"no_method"`
 }

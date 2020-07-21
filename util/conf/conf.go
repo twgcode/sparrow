@@ -57,9 +57,16 @@ func (v *ViperConf) init() (err error) {
 // OnConfigChange 配置文件发生变更后的回调函数
 func (v *ViperConf) OnConfigChange(onConfigChange func(e fsnotify.Event)) {
 	if onConfigChange != nil {
-		// 监听配置变化
-		v.Viper.WatchConfig()
 		v.Viper.OnConfigChange(onConfigChange)
 	}
+}
 
+// WatchConfig监听配置变化
+func (v *ViperConf) WatchConfig() {
+	// 监听配置变化
+	v.Viper.WatchConfig()
+}
+
+func (v *ViperConf) Unmarshal(rawVal interface{}, opts ...viper.DecoderConfigOption) (err error) {
+	return v.Viper.Unmarshal(rawVal, opts...)
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func TestInitCmd(t *testing.T) {
-	err := InitCmd("sparrow", "", "", nil)
+	err := InitCmd("sparrow", "", "", nil, "v0.0.1")
 	if err != nil {
 		t.Fatal(err)
 	}

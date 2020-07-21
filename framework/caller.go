@@ -8,15 +8,19 @@ package framework
 
 import (
 	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/cobra"
 )
 
-var DefaultCfgType = FileType
-var Sparrow = NewApp()
+var (
+	DefaultCfgType = FileType
+	Sparrow        = NewApp()
+	Engine         = Sparrow.newEngine()
+	// 1 file code
+	// 提供写默认的 code 配置
+)
 
 // ConfigApp 配置框架需要的一些参数
-func ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event), cfg cfgType) (err error) {
-	err = Sparrow.ConfigApp(use, short, long, callerRun, configOnConfigChange, cfg)
+func ConfigApp(callCfg *CallSparrowCfg) (err error) {
+	err = Sparrow.ConfigApp(callCfg)
 	return
 }
 
@@ -28,6 +32,5 @@ func Execute() (err error) {
 
 // OnConfigChange  项目/调用方 配置文件发生变更后的回调函数
 func OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
-	Sparrow.OnConfigChange(configOnConfigChange)
 
 }

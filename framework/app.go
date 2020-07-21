@@ -10,11 +10,17 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/twgcode/sparrow/handle"
+	"github.com/twgcode/sparrow/util/cmd"
+	"github.com/twgcode/sparrow/util/conf"
+	"github.com/twgcode/sparrow/util/log"
+	"github.com/twgcode/sparrow/util/log/access"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
-	"github.com/twgcode/sparrow/util/cmd"
-	"github.com/twgcode/sparrow/util/conf"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type cfgType int8
@@ -24,16 +30,37 @@ const (
 	CodeType cfgType = 1
 )
 
+var (
+	cfgTypeErr = fmt.Errorf("cfgType wrong value")
+)
+
+// CallSparrowCfg 调用框架时需要的配置
+type CallSparrowCfg struct {
+	Use       string
+	Short     string
+	Long      string
+	Version   string
+	CallerRun func(*cobra.Command, []string) error
+	CmdCfg    bool // 控制 项目本身配置是否由cmd指定的 -c 参数指定
+	// 如果 CmdCfg 为 true 下面的这 3 个值才有意义
+	CallOnConfigChange      func(e fsnotify.Event)
+	CallRawVal              interface{} // 调用方 配置结构体 实例, 一定要是指针类型
+	CallDecoderConfigOption []viper.DecoderConfigOption
+
+	CfgType    cfgType // 框架读取框架配置的方式: file, code
+	SparrowCfg *conf.SparrowConf
+}
+
 // App sparrow结构体
 type App struct {
-	Engine                   *gin.Engine
-	cfgType                  cfgType                              // 框架读取框架配置的方式, file: code
-	initOnce                 sync.Once                            // 防止并发的初始化
-	callerRun                func(*cobra.Command, []string) error // 业务调用方在web服务启动前要执行的代码
-	EtcConf                  *conf.ViperConf                      //  框架配置
-	ConfigConf               *conf.ViperConf                      // 项目/业务方 使用配置
-	configOnConfigChange     func(e fsnotify.Event)               // 项目/业务方配置文件发生变化后的 回调函数
+	Engine         *gin.Engine
+	callSparrowCfg *CallSparrowCfg
+
+	EtcConf                  *conf.ViperConf //  框架配置
+	ConfigConf               *conf.ViperConf // 项目/业务方 使用配置
 	configOnConfigChangeLock sync.Mutex
+	initOnce                 sync.Once // 防止多次调用
+	newGinOnce               sync.Once // 防止多次调用
 }
 
 // NewApp 构造
@@ -43,17 +70,27 @@ func NewApp() (app *App) {
 }
 
 // ConfigApp 配置框架需要的一些参数
-func (a *App) ConfigApp(use, short, long string, callerRun func(*cobra.Command, []string) error, configOnConfigChange func(e fsnotify.Event), cfg cfgType) (err error) {
-
+func (a *App) ConfigApp(callCfg *CallSparrowCfg) (err error) {
 	a.initOnce.Do(func() {
-		a.cfgType = cfg
-		a.callerRun = callerRun // 调用在web启动前要执行的代码
-		a.configOnConfigChange = configOnConfigChange
-		if err = cmd.InitCmd(use, short, long, a.runAppE); err != nil {
+		a.callSparrowCfg = callCfg
+		if err = cmd.InitCmd(callCfg.Use, callCfg.Short, callCfg.Long, a.runAppE, callCfg.Version); err != nil {
 			return
 		}
 	})
 	return
+}
+
+// setGin 设置 gin 有关配置
+func (a *App) setGin() {
+	// 设置 gin 的 模式
+	gin.SetMode(a.callSparrowCfg.SparrowCfg.Gin.Mode)
+	// 添加一些 默认的 handle
+	if a.callSparrowCfg.SparrowCfg.Gin.NoRoute {
+		a.Engine.NoRoute(handle.NoRoute)
+	}
+	if a.callSparrowCfg.SparrowCfg.Gin.NoMethod {
+		a.Engine.NoMethod(handle.NoMethod)
+	}
 }
 
 // runPre 启动web服务前的工作
@@ -65,27 +102,41 @@ func (a *App) runPre() (err error) {
 	if err = a.initConf(); err != nil {
 		return
 	}
-	// 初始化日志
-
+	// 2 初始化日志
+	// 2-1 构建业务日志
+	if _, _, err = log.NewBusinessLoggerMgr(a.callSparrowCfg.SparrowCfg.Log); err != nil {
+		return
+	}
+	// 2-2 构建路由日志
+	if _, _, err = access.NewLoggerMgr(a.callSparrowCfg.SparrowCfg.Access); err != nil {
+		log.Error("无法加载 路由日志", zap.Error(err))
+		return
+	}
 	// 配置 Engine
-
+	a.setGin()
 	return
 }
 
 func (a *App) runAppE(cmd *cobra.Command, args []string) (err error) {
-	a.Engine = gin.New() // 构造一个引擎
+	a.newEngine()
 	if err = a.runPre(); err != nil {
 		return
 	}
 	// 业务调用方执行的代码
-	if a.callerRun != nil {
-		if err = a.callerRun(cmd, args); err != nil {
+	if a.callSparrowCfg.CallerRun != nil {
+		if err = a.callSparrowCfg.CallerRun(cmd, args); err != nil {
 			return
 		}
 	}
 	// 启动 web 服务
 	err = a.Engine.Run()
 	return
+}
+func (a *App) newEngine() *gin.Engine {
+	a.newGinOnce.Do(func() {
+		a.Engine = gin.New()
+	})
+	return a.Engine
 }
 
 // Execute 启动服务
@@ -98,37 +149,62 @@ func (a *App) Execute() (err error) {
 
 // initConf 初始化 配置
 func (a *App) initConf() (err error) {
-	// 框架本身的日志
+	switch a.callSparrowCfg.CfgType {
+	default:
+		err = cfgTypeErr
+		return
+	case CodeType:
+		if err = a.initCallConf(); err != nil {
+			return
+		}
+	case FileType:
+		if err = a.initFileConf(); err != nil {
+			return
+		}
+		if err = a.initCallConf(); err != nil {
+			return
+		}
+	}
+	return
 
+}
+
+// initFileConf 以 FileType 获取gin有关配置
+func (a *App) initFileConf() (err error) {
 	if a.EtcConf, err = conf.NewViperConfig(cmd.GetEtc(), cmd.GetEtcEnvPrefix(), cmd.GetEtcAutoEnv()); err != nil {
 		return
 	}
-	// 这里还差a.EtcConf的 OnConfigChange方法没 设置
-	a.EtcConf.OnConfigChange(func(e fsnotify.Event) {})
-	_config := cmd.TrimSpaceConfig()
-	if len(_config) > 0 {
-		// 项目/业务方 开启了业务配置
-		if a.ConfigConf, err = conf.NewViperConfig(_config, cmd.GetConfigEnvPrefix(), cmd.GetConfigAutoEnv()); err != nil {
-			return
-		}
-		a.ConfigConf.OnConfigChange(a.configOnConfigChange)
+	if err = a.EtcConf.Viper.Unmarshal(&a.callSparrowCfg.SparrowCfg); err != nil {
+		return
 	}
 	return
 }
 
-// OnConfigChange 配置 项目/调用方 配置文件发生变更后的回调函数
-func (a *App) OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
-	defer a.configOnConfigChangeLock.Unlock()
-	a.configOnConfigChangeLock.Lock()
-	if a.ConfigConf != nil {
-		a.configOnConfigChange = configOnConfigChange
-		a.ConfigConf.OnConfigChange(configOnConfigChange)
+// initCallConf 业务方配置是否需要从 cmd 指定的配置文件中读取配置
+func (a *App) initCallConf() (err error) {
+	if a.callSparrowCfg.CmdCfg {
+		_config := cmd.TrimSpaceConfig()
+		if len(_config) > 0 {
+			// 项目/业务方 开启了业务配置
+			if a.ConfigConf, err = conf.NewViperConfig(_config, cmd.GetConfigEnvPrefix(), cmd.GetConfigAutoEnv()); err != nil {
+				return
+			}
+			if err = a.ConfigConf.Unmarshal(a.callSparrowCfg.CallRawVal, a.callSparrowCfg.CallDecoderConfigOption...); err != nil {
+				return
+			}
+			// 开启 配置文件 监听
+			if a.callSparrowCfg.CallOnConfigChange != nil {
+				a.ConfigConf.WatchConfig()
+				a.ConfigConf.OnConfigChange(a.callSparrowCfg.CallOnConfigChange)
+			}
+		}
 	}
+	return
 }
 
 // checkCmd 检查cmd参数格式是否正确
 func (a *App) checkCmd() (err error) {
-	if a.cfgType == FileType {
+	if a.callSparrowCfg.CfgType == FileType {
 		if len(cmd.TrimSpaceEtc()) == 0 {
 			err = fmt.Errorf("sparrow framework configuration file path cannot be empty, please use -e / --etc to specify the correct path")
 		}
@@ -137,20 +213,5 @@ func (a *App) checkCmd() (err error) {
 }
 
 /*
-	// 抽离出来写到一个包中
-	// NoRoute 设置 404 code 的 handle
-	func (a *App) NoRoute() {
-
-	}
-
-	// NoRoute 设置 405 code 的 handle
-	func (a *App) NoMethod() {
-
-	}
-*/
-
-/*
-编写config模块剩余的
-编写日志模块
-编写路由日志 和 recover 模块
+	编写路由日志 和 recover 模块
 */

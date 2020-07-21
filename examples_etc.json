@@ -1,0 +1,40 @@
+{
+  "gin": {
+    "addr": ":8080",
+    "mode": "debug",
+    "no_route": true,
+    "no_method": true
+  },
+  "log": {
+    "output_console": false,
+    "output_file": true,
+    "split_write_from_level": false,
+    "stacktrace": true,
+    "low_level": "debug",
+    "high_level": "warn",
+    "encoder_text": "console",
+    "encoder_config_text": "dev_default",
+    "low_level_file": {
+      "file_name": "./info.log",
+      "max_size": 10,
+      "max_backups": "100",
+      "compress": true
+    }
+  },
+  "access": {
+    "output_console": false,
+    "output_file": true,
+    "split_write_from_level": false,
+    "stacktrace": true,
+    "low_level": "debug",
+    "high_level": "warn",
+    "encoder_text": "console",
+    "encoder_config_text": "dev_default",
+    "low_level_file": {
+      "file_name": "./access.log",
+      "max_size": 10,
+      "max_backups": "100",
+      "compress": true
+    }
+  }
+}

@@ -63,7 +63,7 @@ func GetConfig() string {
 }
 
 func TrimSpaceConfig() string {
-	etc = strings.TrimSpace(config)
+	config = strings.TrimSpace(config)
 	return config
 }
 
@@ -84,10 +84,10 @@ func GetConfigEnvPrefix() string {
 }
 
 // InitCmd 初始化命令行
-func InitCmd(use, short, long string, runE func(*cobra.Command, []string) error) (err error) {
+func InitCmd(use, short, long string, runE func(*cobra.Command, []string) error, version string) (err error) {
 	once.Do(func() {
 		// 初始化 RootCmd 配置
-		_initRootCmd(use, short, long, runE)
+		_initRootCmd(use, short, long, runE, version)
 		/*
 			if err = RootCmd.Execute(); err != nil {
 				return
@@ -98,7 +98,7 @@ func InitCmd(use, short, long string, runE func(*cobra.Command, []string) error)
 }
 
 // _initRootCmd 初始化 RootCmd 配置,
-func _initRootCmd(use, short, long string, runE func(*cobra.Command, []string) error) {
+func _initRootCmd(use, short, long string, runE func(*cobra.Command, []string) error, version string) {
 	if use != "" {
 		RootCmd.Use = use
 	}
@@ -107,6 +107,9 @@ func _initRootCmd(use, short, long string, runE func(*cobra.Command, []string) e
 	}
 	if long != "" {
 		RootCmd.Long = long
+	}
+	if version != "" {
+		RootCmd.Version = version
 	}
 	if runE != nil {
 		RootCmd.RunE = runE
