@@ -10,16 +10,17 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/twgcode/sparrow/handle"
 	"github.com/twgcode/sparrow/util/cmd"
 	"github.com/twgcode/sparrow/util/conf"
 	"github.com/twgcode/sparrow/util/log"
 	"github.com/twgcode/sparrow/util/log/access"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -43,8 +44,8 @@ type CallSparrowCfg struct {
 	CallerRun func(*cobra.Command, []string) error
 	CmdCfg    bool // 控制 项目本身配置是否由cmd指定的 -c 参数指定
 	// 如果 CmdCfg 为 true 下面的这 3 个值才有意义
-	CallOnConfigChange      func(e fsnotify.Event)
 	CallRawVal              interface{} // 调用方 配置结构体 实例, 一定要是指针类型
+	CallOnConfigChange      func(e fsnotify.Event)
 	CallDecoderConfigOption []viper.DecoderConfigOption
 
 	CfgType    cfgType // 框架读取框架配置的方式: file, code
@@ -95,10 +96,11 @@ func (a *App) setGin() {
 
 // runPre 启动web服务前的工作
 func (a *App) runPre() (err error) {
+	// 检查命令传参
 	if err = a.checkCmd(); err != nil {
 		return
 	}
-	// 初始化配置
+	// 1 初始化配置
 	if err = a.initConf(); err != nil {
 		return
 	}
@@ -108,9 +110,11 @@ func (a *App) runPre() (err error) {
 		return
 	}
 	// 2-2 构建路由日志
-	if _, _, err = access.NewLoggerMgr(a.callSparrowCfg.SparrowCfg.Access); err != nil {
-		log.Error("无法加载 路由日志", zap.Error(err))
-		return
+	if a.callSparrowCfg.SparrowCfg.Access != nil {
+		if _, _, err = access.NewLoggerMgr(a.callSparrowCfg.SparrowCfg.Access); err != nil {
+			log.Error("无法加载 路由日志", zap.Error(err))
+			return
+		}
 	}
 	// 配置 Engine
 	a.setGin()
