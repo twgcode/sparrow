@@ -60,13 +60,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"net/http"
 
 	"github.com/twgcode/sparrow/framework"
 	"github.com/twgcode/sparrow/util/data"
 	"github.com/twgcode/sparrow/util/log"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
@@ -124,7 +124,6 @@ func RootHandle(c *gin.Context) {
 func PanicHandle(c *gin.Context) {
 	panic("PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle")
 }
-
 ```
 
 在项目目录下执行以下命令:
