@@ -46,3 +46,83 @@ sparrow 注重提供减少开发者的工作量, 但是不限制开发者编码�
 **sparrow的目标就是**:尽量平衡自由和规范的界限，既可以让开发者减少开发工作量和开发心智负担，同时开发者有自由组合的权利；当然这是个美好的愿望，希望能实现. 😁😁😁
 
 
+
+### 示例程序
+
+```go
+/**
+@Author: wei-g
+@Date:   2020/6/19 5:33 下午
+@Description:
+*/
+
+package main
+
+import (
+	"fmt"
+	"github.com/fsnotify/fsnotify"
+	"net/http"
+
+	"github.com/twgcode/sparrow/framework"
+	"github.com/twgcode/sparrow/util/data"
+	"github.com/twgcode/sparrow/util/log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
+)
+
+var (
+	err error
+	mgr = &MGR{}
+)
+
+type MGR struct {
+	Name string
+}
+
+func run(cmd *cobra.Command, args []string) (err error) {
+	framework.UseDefaultMiddleware(false)
+	framework.Sparrow.Engine.GET("/", RootHandle)
+	framework.Engine.GET("/1", RootHandle)
+	framework.Engine.GET("/p", PanicHandle)
+	fmt.Println(mgr.Name)
+	return
+}
+
+func main() {
+	cfg := framework.CallSparrowCfg{
+		Use:       "examples",
+		Short:     "sparrow 示例项目",
+		Long:      "sparrow 示例项目, 用来演示 sparrow的新特性 🎉 🎉 🎉",
+		Version:   "v0.0.1",
+		CallerRun: run,
+		CmdCfg:    true,
+		CallOnConfigChange: func(e fsnotify.Event) {
+			// 配置文件发生变更之后会调用的回调函数
+			framework.Sparrow.ConfigConf.Unmarshal(mgr)
+			fmt.Println("Config file changed:", mgr.Name)
+			log.Info(mgr.Name)
+		},
+		CallRawVal:              mgr,
+		CallDecoderConfigOption: nil,
+		CfgType:                 framework.FileType,
+		SparrowCfg:              nil,
+	}
+	if err = framework.ConfigApp(&cfg); err != nil {
+		panic(err)
+	}
+	err = framework.Execute()
+	fmt.Println("====== end ======")
+	fmt.Println(err)
+
+}
+func RootHandle(c *gin.Context) {
+	c.JSON(http.StatusOK, data.SucJson("root /"))
+
+}
+
+func PanicHandle(c *gin.Context) {
+	panic("PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle")
+}
+
+```
