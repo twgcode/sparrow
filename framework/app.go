@@ -215,7 +215,3 @@ func (a *App) checkCmd() (err error) {
 	}
 	return
 }
-
-/*
-	编写路由日志 和 recover 模块
-*/

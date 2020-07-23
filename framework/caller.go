@@ -7,11 +7,15 @@
 package framework
 
 import (
-	"github.com/fsnotify/fsnotify"
+	"sync"
 
+	"github.com/twgcode/sparrow/middleware"
 	"github.com/twgcode/sparrow/util/conf"
 	"github.com/twgcode/sparrow/util/log"
 	"github.com/twgcode/sparrow/util/log/access"
+
+	"github.com/fsnotify/fsnotify"
+	"go.uber.org/zap"
 )
 
 var (
@@ -89,6 +93,8 @@ var (
 		CfgType:    CodeType,
 		SparrowCfg: SparrowCfgProd,
 	}
+	// 默认中间件只加载一次
+	useMiddlewareOnce = sync.Once{}
 )
 
 // ConfigApp 配置默认实例需要的一些参数
@@ -106,4 +112,19 @@ func Execute() (err error) {
 // OnConfigChange  项目/调用方 配置文件发生变更后的回调函数
 func OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
 
+}
+
+// UseDefaultMiddleware 使用默认的中间件, stack参数用了指定是否在 recovery 时 是否单独记录 debug.Stack()
+func UseDefaultMiddleware(stack bool) {
+	useMiddlewareOnce.Do(func() {
+		LoggerMap := map[string]*zap.Logger{
+			"access":   access.LoggerMgr.Logger,
+			"business": log.BusinessLoggerMgr.Logger,
+		}
+		if access.LoggerMgr.Logger != nil {
+			Engine.Use(middleware.GinLoggerMap(LoggerMap), middleware.GinRecovery(access.LoggerMgr.Logger, stack))
+		} else {
+			Engine.Use(middleware.GinLoggerMap(LoggerMap), middleware.GinRecovery(log.BusinessLoggerMgr.Logger, stack))
+		}
+	})
 }
