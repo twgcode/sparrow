@@ -16,31 +16,30 @@ sparrow 注重提供减少开发者的工作量, 但是不限制开发者编码�
   - ...
 
 - 命令行参数支持
-  - ✅ 使用 `cobra` 实现命令行参数支持
+  - [x] 使用 `cobra` 实现命令行参数支持
   - [ ] 支持查看当前http连接数
-  - ...
 
 - 常用中间件
-  - ✅ 对panic和web访问日志记录写到框架里面内置中间件支持
+  - [x] 对panic和web访问日志记录写到框架里面内置中间件支持
   - [ ] 对其他中间件以第三方包支持
+  
 
 - 日志
-  - ✅ 使用 `zap` 实现日志支持
-  - ✅ 使用 `lumberjack` 对日志进行切割管理
+  - [x] 使用 `zap` 实现日志支持
+  - [x] 使用 `lumberjack` 对日志进行切割管理
 
 
 - 配置读取
-  - ✅ 支持 code 和 file 2种方式,配置框架
-  - ✅ 配置文件方面使用 viper实现支持
+  - [x] 支持 code 和 file 2种方式,配置框架
+  - [x] 配置文件方面使用 viper实现支持
 
 - 常用组件支持(以第三方包的形式发布)
-  - ✅ mysql 使用 `sqlx` 和 `go-sql-driver` 作为mysql支持
+  - [x] mysql 使用 `sqlx` 和 `go-sql-driver` 作为mysql支持
   - redis 
   - etcd
   - elasticsearch
   - websocket
   - ...
-- ...
 
 
 
