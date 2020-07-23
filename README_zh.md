@@ -48,7 +48,7 @@ sparrow 注重提供减少开发者的工作量, 但是不限制开发者编码�
 
 
 ### 示例程序
-
+main.go 代码如下:
 ```go
 /**
 @Author: wei-g
@@ -125,4 +125,12 @@ func PanicHandle(c *gin.Context) {
 	panic("PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle PanicHandle")
 }
 
+```
+
+在项目目录下执行以下命令:
+```shell script
+# 整理项目依赖
+go mod tidy
+# 编译项目
+go build
 ```
