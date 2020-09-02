@@ -7,8 +7,9 @@
 package log
 
 import (
-	"go.uber.org/zap"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 var (

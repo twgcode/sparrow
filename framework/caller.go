@@ -15,7 +15,6 @@ import (
 	"github.com/twgcode/sparrow/util/log/access"
 
 	"github.com/fsnotify/fsnotify"
-	"go.uber.org/zap"
 )
 
 var (
@@ -123,14 +122,6 @@ func OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
 // UseDefaultMiddleware 使用默认的中间件, stack参数用了指定是否在 recovery 时 是否单独记录 debug.Stack()
 func UseDefaultMiddleware(stack bool) {
 	useMiddlewareOnce.Do(func() {
-		LoggerMap := map[string]*zap.Logger{
-			"access":   access.LoggerMgr.Logger,
-			"business": log.BusinessLoggerMgr.Logger,
-		}
-		if access.LoggerMgr.Logger != nil {
-			Engine.Use(middleware.GinLoggerMap(LoggerMap), middleware.GinRecovery(access.LoggerMgr.Logger, stack))
-		} else {
-			Engine.Use(middleware.GinLoggerMap(LoggerMap), middleware.GinRecovery(log.BusinessLoggerMgr.Logger, stack))
-		}
+		Engine.Use(middleware.DefaultGinLogger(), middleware.DefaultGinRecovery(stack))
 	})
 }
