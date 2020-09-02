@@ -19,38 +19,44 @@ import (
 )
 
 var (
-	GinCfg = &conf.GinConf{
+	GinCfgDebug = &conf.GinConf{
 		Addr:     ":8080",
 		Mode:     "debug",
 		NoRoute:  true,
 		NoMethod: true,
 	}
+	GinCfgRelease = &conf.GinConf{
+		Addr:     ":8080",
+		Mode:     "release",
+		NoRoute:  true,
+		NoMethod: true,
+	}
 	// 本地开发使用
 	SparrowCfgLocal = &conf.SparrowConf{
-		Gin: GinCfg,
+		Gin: GinCfgDebug,
 		Log: log.LocalBusinessLogCfg(),
 	}
 	// 开发环境
 	SparrowCfgDev = &conf.SparrowConf{
-		Gin:    GinCfg,
+		Gin:    GinCfgRelease,
 		Access: access.DevAccessLogCfg(),
 		Log:    log.DevBusinessLogCfg(),
 	}
 	// 测试环境
 	SparrowCfgBeta = &conf.SparrowConf{
-		Gin:    GinCfg,
+		Gin:    GinCfgRelease,
 		Access: access.DevAccessLogCfg(),
 		Log:    log.BetaBusinessLogCfg(),
 	}
 	// uat/pre环境
 	SparrowCfgUat = &conf.SparrowConf{
-		Gin:    GinCfg,
+		Gin:    GinCfgRelease,
 		Access: access.ProdAccessLogCfg(),
 		Log:    log.UatBusinessLogCfg(),
 	}
 	// 发布线上使用
 	SparrowCfgProd = &conf.SparrowConf{
-		Gin:    GinCfg,
+		Gin:    GinCfgRelease,
 		Access: access.ProdAccessLogCfg(),
 		Log:    log.ProdBusinessLogCfg(),
 	}
@@ -111,7 +117,7 @@ func Execute() (err error) {
 
 // OnConfigChange  项目/调用方 配置文件发生变更后的回调函数
 func OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
-
+	Sparrow.ConfigConf.OnConfigChange(configOnConfigChange)
 }
 
 // UseDefaultMiddleware 使用默认的中间件, stack参数用了指定是否在 recovery 时 是否单独记录 debug.Stack()

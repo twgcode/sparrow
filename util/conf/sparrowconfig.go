@@ -8,10 +8,11 @@ package conf
 
 import "github.com/twgcode/sparrow/util/log"
 
+// SparrowConf sparrow 框架本身的配置
 type SparrowConf struct {
 	Gin    *GinConf          `mapstructure:"gin" json:"gin"`
-	Access *log.LoggerConfig `mapstructure:"access" json:"access"`
-	Log    *log.LoggerConfig `mapstructure:"log" json:"log"`
+	Access *log.LoggerConfig `mapstructure:"access" json:"access"` // 框架的路由日志
+	Log    *log.LoggerConfig `mapstructure:"log" json:"log"`       // 业务日志
 }
 
 // 启动 gin 框架需要有关配置
