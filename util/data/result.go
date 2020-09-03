@@ -15,8 +15,8 @@ const (
 	RequestErr = 1000
 	// 请求参数错误
 	RequestParaErr = 1001
-	// 响应方错误
-	ResponseErr = 2001
+	// 响应方内部错误
+	ResponseInternalErr = 500
 )
 
 const (
@@ -50,19 +50,33 @@ func SucJson(data interface{}) (result *ResultJson) {
 }
 
 // OtherFailedJson 其他错误的错误
-func OtherFailedJson(msg string) (result *ResultJson) {
-	return &ResultJson{
-		Code:    FailedCode,
-		Message: msg,
-		Data:    "",
-	}
+func OtherFailedJson(msg string, data ...interface{}) (result *ResultJson) {
+	return commonErrJson(FailedCode, msg, data...)
 }
 
 // RequestErrJson 请求端错误
-func RequestErrJson(msg string) (result *ResultJson) {
-	return &ResultJson{
-		Code:    RequestErr,
-		Message: msg,
-		Data:    "",
+func RequestErrJson(msg string, data ...interface{}) (result *ResultJson) {
+	return commonErrJson(RequestErr, msg, data...)
+}
+
+// ResponseInternalErrJson 服务端内部错误
+func ResponseInternalErrJson(msg string, data ...interface{}) (result *ResultJson) {
+	return commonErrJson(ResponseInternalErr, msg, data...)
+}
+
+func commonErrJson(code int, msg string, data ...interface{}) (result *ResultJson) {
+	if len(data) < 1 {
+		return &ResultJson{
+			Code:    code,
+			Message: msg,
+			Data:    "",
+		}
+	} else {
+		return &ResultJson{
+			Code:    code,
+			Message: msg,
+			Data:    data[0],
+		}
 	}
+
 }

@@ -12,3 +12,11 @@ func TestCode(t *testing.T) {
 	t.Log(SucCode)
 	t.Log(FailedCode)
 }
+func TestResponseInternalErrJson(t *testing.T) {
+	ret := ResponseInternalErrJson("test")
+	t.Log(ret)
+	t.Log(ret.Data)
+	ret1 := ResponseInternalErrJson("test", map[string]int{"a": 1})
+	t.Log(ret1)
+	t.Log(ret1.Data)
+}
