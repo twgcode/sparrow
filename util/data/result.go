@@ -69,7 +69,7 @@ func commonErrJson(code int, msg string, data ...interface{}) (result *ResultJso
 		return &ResultJson{
 			Code:    code,
 			Message: msg,
-			Data:    "",
+			Data:    nil,
 		}
 	} else {
 		return &ResultJson{
