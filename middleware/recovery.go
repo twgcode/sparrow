@@ -51,7 +51,7 @@ func GinRecovery(logger *zap.Logger, stack bool) gin.HandlerFunc {
 					}
 					// 根据 stack 的值的不同 记录log的内容不同
 					logger.Error("[Recovery from panic]",
-						zap.String("error", err.(string)),
+						zap.Any("error", err),
 						zap.String("request", string(httpRequest)),
 						zap.String("stack", string(debug.Stack())))
 					c.AbortWithStatus(http.StatusInternalServerError)
@@ -87,7 +87,7 @@ func GinRecovery(logger *zap.Logger, stack bool) gin.HandlerFunc {
 					}
 					// 根据 stack 的值的不同 记录log的内容不同
 					logger.Error("[Recovery from panic]",
-						zap.String("error", err.(string)),
+						zap.Any("error", err),
 						zap.String("request", string(httpRequest)),
 					)
 					c.AbortWithStatus(http.StatusInternalServerError)
@@ -135,7 +135,7 @@ func DefaultGinRecovery(stack bool) gin.HandlerFunc {
 						}
 						// 根据 stack 的值的不同 记录log的内容不同
 						access.Error("[Recovery from panic]",
-							zap.String("error", err.(string)),
+							zap.Any("error", err),
 							zap.String("request", string(httpRequest)),
 							zap.String("stack", string(debug.Stack())))
 						c.AbortWithStatus(http.StatusInternalServerError)
@@ -171,7 +171,7 @@ func DefaultGinRecovery(stack bool) gin.HandlerFunc {
 						}
 						// 根据 stack 的值的不同 记录log的内容不同
 						access.Error("[Recovery from panic]",
-							zap.String("error", err.(string)),
+							zap.Any("error", err),
 							zap.String("request", string(httpRequest)),
 						)
 						c.AbortWithStatus(http.StatusInternalServerError)
@@ -209,7 +209,7 @@ func DefaultGinRecovery(stack bool) gin.HandlerFunc {
 						}
 						// 根据 stack 的值的不同 记录log的内容不同
 						log.Error("[Recovery from panic]",
-							zap.String("error", err.(string)),
+							zap.Any("error", err),
 							zap.String("request", string(httpRequest)),
 							zap.String("stack", string(debug.Stack())))
 						c.AbortWithStatus(http.StatusInternalServerError)
@@ -231,7 +231,6 @@ func DefaultGinRecovery(stack bool) gin.HandlerFunc {
 								}
 							}
 						}
-
 						httpRequest, _ := httputil.DumpRequest(c.Request, false)
 						if brokenPipe {
 							log.Error(c.Request.URL.Path,
@@ -245,7 +244,7 @@ func DefaultGinRecovery(stack bool) gin.HandlerFunc {
 						}
 						// 根据 stack 的值的不同 记录log的内容不同
 						log.Error("[Recovery from panic]",
-							zap.String("error", err.(string)),
+							zap.Any("error", err),
 							zap.String("request", string(httpRequest)),
 						)
 						c.AbortWithStatus(http.StatusInternalServerError)
