@@ -24,11 +24,27 @@ const (
 	SucMsg    = "success"
 )
 
+var (
+	codeMsg = map[int]string{
+		RequestParaErr: "参数错误",
+	}
+)
+
 // ResultJson 前后端分离开发时 约定好的标准的数据结构
 type ResultJson struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
+}
+
+// CodeToMsg code转换成 msg
+func CodeToMsg(code int) (msg string, ok bool) {
+	msg, ok = codeMsg[code]
+	if ok {
+		return
+	}
+	msg = FailedMsg
+	return
 }
 
 // NewResultJson 构造一个标准的数据
@@ -64,6 +80,18 @@ func ResponseInternalErrJson(msg string, data ...interface{}) (result *ResultJso
 	return commonErrJson(ResponseInternalErr, msg, data...)
 }
 
+// RequestParaErrJson 请求参数错误
+func RequestParaErrJson(msg string, data ...interface{}) (result *ResultJson) {
+	temp, _ := CodeToMsg(RequestParaErr)
+	if len(msg) == 0 {
+		msg = temp
+	} else {
+		msg = temp + ", " + msg
+	}
+	return commonErrJson(RequestParaErr, msg, data...)
+
+}
+
 func commonErrJson(code int, msg string, data ...interface{}) (result *ResultJson) {
 	if len(data) < 1 {
 		return &ResultJson{
@@ -78,5 +106,11 @@ func commonErrJson(code int, msg string, data ...interface{}) (result *ResultJso
 			Data:    data[0],
 		}
 	}
+
+}
+
+// CommonErrJson 通用的错误返回结构
+func CommonErrJson(code int, msg string, data ...interface{}) (result *ResultJson) {
+	return commonErrJson(code, msg, data)
 
 }
