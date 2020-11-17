@@ -8,9 +8,9 @@ package data
 
 const (
 	// FailedCode 处理失败 其他错误
-	FailedCode = iota - 1 // -1
+	FailedCode = -1
 	// SucCode 处理成功
-	SucCode // 0
+	SucCode = 200
 	// RequestErr 请求方错误
 	RequestErr = 1000
 	// 请求参数错误
