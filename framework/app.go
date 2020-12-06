@@ -14,14 +14,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
 	"github.com/twgcode/sparrow/handle"
 	"github.com/twgcode/sparrow/util/cmd"
 	"github.com/twgcode/sparrow/util/conf"
 	"github.com/twgcode/sparrow/util/log"
 	"github.com/twgcode/sparrow/util/log/access"
-
-	"go.uber.org/zap"
 )
 
 type cfgType int8
@@ -37,12 +36,13 @@ var (
 
 // CallSparrowCfg 调用框架时需要的配置
 type CallSparrowCfg struct {
-	Use       string
-	Short     string
-	Long      string
-	Version   string
-	CallerRun func(*cobra.Command, []string) error
-	CmdCfg    bool // 控制 项目本身配置是否由cmd指定的 -c 参数指定
+	Use            string
+	Short          string
+	Long           string
+	Version        string
+	AssertValidate bool // 是否 默认调用  AssertValidate()
+	CallerRun      func(*cobra.Command, []string) error
+	CmdCfg         bool // 控制 项目本身配置是否由cmd指定的 -c 参数指定
 	// 如果 CmdCfg 为 true 下面的这 3 个值才有意义
 	CallRawVal              interface{} // 调用方 配置结构体 实例, 一定要是指针类型
 	CallOnConfigChange      func(e fsnotify.Event)
@@ -116,6 +116,16 @@ func (a *App) runPre() (err error) {
 			return
 		}
 	}
+
+	// AssertValidate()
+	if a.callSparrowCfg.AssertValidate {
+		if _, err = AssertValidate(); err != nil {
+			log.Error("无法快速使用框架中自带的Validator", zap.Error(err))
+			return
+		}
+		log.Info("gin Validator.Engine type assertion is *validator.Validate success")
+	}
+
 	// 配置 Engine
 	a.setGin()
 	return
@@ -133,7 +143,7 @@ func (a *App) runAppE(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	// 启动 web 服务
-	err = a.Engine.Run()
+	err = a.Engine.Run(a.callSparrowCfg.SparrowCfg.Gin.Addr)
 	return
 }
 func (a *App) newEngine() *gin.Engine {
