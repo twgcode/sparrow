@@ -41,6 +41,11 @@ type ResultJson struct {
 	Data    interface{} `json:"data"`
 }
 
+// PutCodeMsgMap  向codeMsg中设置键值对
+func PutCodeMsgMap(code int, msg string) {
+	codeMsg[code] = msg
+}
+
 // CodeToMsg code转换成 msg
 func CodeToMsg(code int) (msg string, ok bool) {
 	msg, ok = codeMsg[code]
@@ -131,4 +136,9 @@ func commonErrJson(code int, msg string, data ...interface{}) (result *ResultJso
 func CommonErrJson(code int, msg string, data ...interface{}) (result *ResultJson) {
 	return commonErrJson(code, msg, data)
 
+}
+
+// CommonJoinMsgErrJson 会对msg就行合拼
+func CommonJoinMsgErrJson(code int, msg string, data ...interface{}) (result *ResultJson) {
+	return commonErrJson(code, CodeJoinMsg(code, msg), data)
 }
