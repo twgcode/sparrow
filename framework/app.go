@@ -85,6 +85,7 @@ func (a *App) ConfigApp(callCfg *CallSparrowCfg) (err error) {
 func (a *App) setGin() {
 	// 设置 gin 的 模式
 	gin.SetMode(a.callSparrowCfg.SparrowCfg.Gin.Mode)
+	a.newEngine()
 	// 添加一些 默认的 handle
 	if a.callSparrowCfg.SparrowCfg.Gin.NoRoute {
 		a.Engine.NoRoute(handle.NoRoute)
@@ -132,7 +133,6 @@ func (a *App) runPre() (err error) {
 }
 
 func (a *App) runAppE(cmd *cobra.Command, args []string) (err error) {
-	a.newEngine()
 	if err = a.runPre(); err != nil {
 		return
 	}

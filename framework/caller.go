@@ -9,12 +9,12 @@ package framework
 import (
 	"sync"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/twgcode/sparrow/middleware"
 	"github.com/twgcode/sparrow/util/conf"
 	"github.com/twgcode/sparrow/util/log"
 	"github.com/twgcode/sparrow/util/log/access"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 var (
@@ -62,9 +62,8 @@ var (
 )
 
 var (
-	Sparrow = NewApp()            // 框架实例方便调用方 快捷使用
-	Engine  = Sparrow.newEngine() // gin引擎实例方便调用方 快捷使用
-	FileCfg = &CallSparrowCfg{    // 提供默认使用 File 的方式配置框架
+	Sparrow = NewApp()         // 框架实例方便调用方 快捷使用
+	FileCfg = &CallSparrowCfg{ // 提供默认使用 File 的方式配置框架
 		CmdCfg:  true,
 		CfgType: FileType,
 	}
@@ -122,6 +121,6 @@ func OnConfigChange(configOnConfigChange func(e fsnotify.Event)) {
 // UseDefaultMiddleware 使用默认的中间件, stack参数用了指定是否在 recovery 时 是否单独记录 debug.Stack()
 func UseDefaultMiddleware(stack bool) {
 	useMiddlewareOnce.Do(func() {
-		Engine.Use(middleware.DefaultGinLogger(), middleware.DefaultGinRecovery(stack))
+		Sparrow.Engine.Use(middleware.DefaultGinLogger(), middleware.DefaultGinRecovery(stack))
 	})
 }
