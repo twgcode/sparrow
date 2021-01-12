@@ -163,31 +163,38 @@ func (a *App) Execute() (err error) {
 
 // initConf 初始化 配置
 func (a *App) initConf() (err error) {
+	// 框架配置
 	switch a.callSparrowCfg.CfgType {
 	default:
 		err = cfgTypeErr
 		return
 	case CodeType:
-		if err = a.initCallConf(); err != nil {
+		if err = a.initFileConf(""); err != nil {
 			return
 		}
 	case FileType:
-		if err = a.initFileConf(); err != nil {
+		if err = a.initFileConf(cmd.RootCmdFlag.Etc()); err != nil {
 			return
 		}
-		if err = a.initCallConf(); err != nil {
-			return
-		}
+	}
+	// 业务方配置
+	if err = a.initCallConf(cmd.RootCmdFlag.Config()); err != nil {
+		return
 	}
 	return
 
 }
 
-// initFileConf 以 FileType 获取gin有关配置
-func (a *App) initFileConf() (err error) {
-	if a.EtcConf, err = conf.NewViperConfig(cmd.GetEtc(), cmd.GetEtcEnvPrefix(), cmd.GetEtcAutoEnv()); err != nil {
+// initFileConf 以 FileType 获取 sparrow 框架有关配置
+func (a *App) initFileConf(configFile string) (err error) {
+	if a.EtcConf, err = conf.NewViperConfig(configFile, cmd.RootCmdFlag.EtcEnvPrefix(), cmd.RootCmdFlag.EtcAutoEnv()); err != nil {
 		return
 	}
+	// 绑定命令参数到 sparrow 框架的 Viper中
+	if err = a.EtcConf.Viper.BindPFlags(cmd.RootCmd.Flags()); err != nil {
+		return
+	}
+	// 反序列化配置 信息到 sparrow框架的配置结构体中
 	if err = a.EtcConf.Viper.Unmarshal(&a.callSparrowCfg.SparrowCfg); err != nil {
 		return
 	}
@@ -195,23 +202,24 @@ func (a *App) initFileConf() (err error) {
 }
 
 // initCallConf 业务方配置是否需要从 cmd 指定的配置文件中读取配置
-func (a *App) initCallConf() (err error) {
+func (a *App) initCallConf(configFile string) (err error) {
 	if a.callSparrowCfg.CmdCfg {
-		_config := cmd.TrimSpaceConfig()
-		if len(_config) > 0 {
-			// 项目/业务方 开启了业务配置
-			if a.ConfigConf, err = conf.NewViperConfig(_config, cmd.GetConfigEnvPrefix(), cmd.GetConfigAutoEnv()); err != nil {
-				return
-			}
+		// 项目/业务方 开启了业务配置
+		if a.ConfigConf, err = conf.NewViperConfig(configFile, cmd.RootCmdFlag.ConfigEnvPrefix(), cmd.RootCmdFlag.ConfigAutoEnv()); err != nil {
+			return
+		}
+		// 反序列化配置
+		if a.callSparrowCfg.CallRawVal != nil {
 			if err = a.ConfigConf.Unmarshal(a.callSparrowCfg.CallRawVal, a.callSparrowCfg.CallDecoderConfigOption...); err != nil {
 				return
 			}
-			// 开启 配置文件 监听
-			if a.callSparrowCfg.CallOnConfigChange != nil {
-				a.ConfigConf.WatchConfig()
-				a.ConfigConf.OnConfigChange(a.callSparrowCfg.CallOnConfigChange)
-			}
 		}
+		// 开启 配置文件 监听
+		if a.callSparrowCfg.CallOnConfigChange != nil {
+			a.ConfigConf.WatchConfig()
+			a.ConfigConf.OnConfigChange(a.callSparrowCfg.CallOnConfigChange)
+		}
+
 	}
 	return
 }
@@ -219,7 +227,7 @@ func (a *App) initCallConf() (err error) {
 // checkCmd 检查cmd参数格式是否正确
 func (a *App) checkCmd() (err error) {
 	if a.callSparrowCfg.CfgType == FileType {
-		if len(cmd.TrimSpaceEtc()) == 0 {
+		if len(cmd.RootCmdFlag.Etc()) == 0 {
 			err = fmt.Errorf("sparrow framework configuration file path cannot be empty, please use -e / --etc to specify the correct path")
 		}
 	}

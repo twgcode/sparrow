@@ -18,12 +18,6 @@ import (
 )
 
 var (
-	GinCfgDebug = &conf.GinConf{
-		Addr:     ":8080",
-		Mode:     "debug",
-		NoRoute:  true,
-		NoMethod: true,
-	}
 	GinCfgRelease = &conf.GinConf{
 		Addr:     ":8080",
 		Mode:     "release",
@@ -32,7 +26,7 @@ var (
 	}
 	// 本地开发使用
 	SparrowCfgLocal = &conf.SparrowConf{
-		Gin: GinCfgDebug,
+		Gin: GinCfgRelease,
 		Log: log.LocalBusinessLogCfg(),
 	}
 	// 开发环境

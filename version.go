@@ -7,5 +7,5 @@
 package sparrow
 
 const (
-	Version = "v0.0.13"
+	Version = "v0.0.14"
 )

@@ -7,10 +7,12 @@
 package conf
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
 	"strings"
 	"sync"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // ViperConf cmd 配置 结构体
@@ -38,9 +40,11 @@ func NewViperConfig(configFile, envPrefix string, autoEnv bool) (vc *ViperConf, 
 // init  初始化Viper 配置
 func (v *ViperConf) init() (err error) {
 	v.newViperOnce.Do(func() {
-		v.Viper.SetConfigFile(v.configFile) // 设置配置文件路径
-		if err = v.Viper.ReadInConfig(); err != nil {
-			return
+		if len(v.configFile) != 0 { // 设置了文件名时
+			v.Viper.SetConfigFile(v.configFile) // 设置配置文件路径
+			if err = v.Viper.ReadInConfig(); err != nil {
+				return
+			}
 		}
 		// 是否自动检测环境变量的keys
 		if v.autoEnv {
@@ -54,6 +58,22 @@ func (v *ViperConf) init() (err error) {
 	return
 }
 
+// Viper 原生功能,为了方便调用更便捷的调用
+
+/* 命令行获取参数有关 */
+func (v *ViperConf) SetDefault(key string, value interface{}) {
+	v.Viper.SetDefault(key, value)
+}
+
+func (v *ViperConf) BindPFlag(key string, flag *pflag.Flag) error {
+	return v.Viper.BindPFlag(key, flag)
+}
+
+func (v *ViperConf) BindPFlags(flags *pflag.FlagSet) error {
+	return v.Viper.BindPFlags(flags)
+}
+
+/* 文件获取参数有关 */
 // OnConfigChange 配置文件发生变更后的回调函数
 func (v *ViperConf) OnConfigChange(onConfigChange func(e fsnotify.Event)) {
 	if onConfigChange != nil {
