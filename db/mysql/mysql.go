@@ -22,7 +22,7 @@ var (
 )
 
 // ConfigMysql mysql 有关配置
-type ConfigMysql struct {
+type Config struct {
 	Ip             string `mapstructure:"ip" json:"ip"`
 	Port           int    `mapstructure:"port" json:"port"`
 	Database       string `mapstructure:"database" json:"database"`
@@ -45,7 +45,7 @@ func InitDefaultDB(username, password, ip string, port int, database, charset st
 }
 
 // 初始化默认的 mysql 连接池 从 ConfigMysql 获取有关配置
-func InitDefaultDBFromCfg(cfg *ConfigMysql) (*sqlx.DB, error) {
+func InitDefaultDBFromCfg(cfg *Config) (*sqlx.DB, error) {
 	var err error
 	once.Do(func() {
 		DB, err = NewDBFromCfg(cfg)
@@ -64,7 +64,7 @@ func Close() (err error) {
 }
 
 // NewDBFromCfg 构建一个 mysql 连接池 从 ConfigMysql 获取有关配置
-func NewDBFromCfg(cfg *ConfigMysql) (*sqlx.DB, error) {
+func NewDBFromCfg(cfg *Config) (*sqlx.DB, error) {
 	return newDB(cfg.Username, cfg.Password, cfg.Ip, cfg.Port, cfg.Database, cfg.Charset, cfg.ParseTime, cfg.Loc, cfg.SetMaxOpenConn, cfg.SetMaxIdleConn)
 }
 

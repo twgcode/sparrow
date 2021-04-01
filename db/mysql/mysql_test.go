@@ -10,7 +10,7 @@ import "testing"
 
 func TestInitDefaultDBFromCfg(t *testing.T) {
 	var err error
-	cfg := &ConfigMysql{
+	cfg := &Config{
 		Ip:             "127.0.0.1",
 		Port:           3306,
 		Database:       "test",
